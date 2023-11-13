@@ -1,0 +1,4 @@
+py_bin/data/from_16b_16to4.bin filter=lfs diff=lfs merge=lfs -text
+py_bin/data/from_16b.bin filter=lfs diff=lfs merge=lfs -text
+py_bin/data/to_4b.bin filter=lfs diff=lfs merge=lfs -text
+py_bin/data/data_x.bin filter=lfs diff=lfs merge=lfs -text
