@@ -3,9 +3,9 @@ import time
 import os
 import random
 stdscr = curses.initscr()
-curses.noecho()     #不输出- -
-curses.cbreak()     #立刻读取:暂不清楚- -
-stdscr.keypad(1)    #开启keypad
+curses.noecho()
+curses.cbreak()
+stdscr.keypad(1)
 stdscr.box()
 
 width = os.get_terminal_size().columns
