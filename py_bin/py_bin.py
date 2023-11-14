@@ -11,7 +11,7 @@ def isPowerOfTwo(num : int):
     else:
         return False
 
-def read_bin(file_path):
+def reaadBinFile(file_path):
     try:
         binfile = open(file_path,'rb')
         size = os.path.getsize(file_path)
@@ -24,7 +24,7 @@ def read_bin(file_path):
     except:
         assert False, "file not exist"
 
-def write_bin(file_path, bary):
+def writeBinFile(file_path, bary):
     try:
         binfile = open(file_path,'wb')
         binfile.write(bary)
@@ -47,7 +47,7 @@ def __max(a, b):
         return a
     return b
 
-def convert_bytes_to_list(bin_ary : bytes, bit_width : int):
+def __convertBytesToList(bin_ary : bytes, bit_width : int):
     l = []
     assert isPowerOfTwo(bit_width), "invalid bit width"
     __mask = (1 << bit_width) - 1
@@ -66,7 +66,7 @@ def convert_bytes_to_list(bin_ary : bytes, bit_width : int):
             l.append(temp)
     return l
 
-def convert_list_to_bytes(data_l : list, bit_width : int):
+def __convertListToBytes(data_l : list, bit_width : int):
     bary = bytearray()
     assert isPowerOfTwo(bit_width), "invalid bit width"
     __mask = (1 << bit_width) - 1
@@ -98,16 +98,16 @@ if __name__ == "__main__":
     to_i = int(format_c[1])
     assert (from_i % to_i) == 0, "invalid arg2"
     fname_o = fname_i[0:len(fname_i) - 4] + str.format("_%dto%d.bin" % (from_i, to_i))
-    in_b = read_bin(fname_i)
-    in_l = convert_bytes_to_list(in_b, from_i)
+    in_b = reaadBinFile(fname_i)
+    in_l = __convertBytesToList(in_b, from_i)
     print("in : %s = %d" % (in_l[0:256], len(in_l)))
-    out_b = convert_list_to_bytes(in_l, to_i)
+    out_b = __convertListToBytes(in_l, to_i)
     #print("out: %s = %d" % (out_b[0:256], len(out_b)))
     out_l = list(out_b)
     print("out: %s = %d" % (out_l[0:256], len(out_l)))
     #print("input: ", b16.hex())
     #out_b = convert_binary(in_b, from_i, to_i)
     #print("output: ", b4.hex())
-    write_bin(fname_o, out_b)
+    writeBinFile(fname_o, out_b)
     print("output to: %s " % (fname_o))
     print(" >>>>> done <<<<<")

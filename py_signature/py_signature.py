@@ -8,7 +8,7 @@ __README = '''
 It utilized ctypes for converting  between c structure and python class.
 '''
 
-def read_bin(file_path):
+def readBinFile(file_path):
     try:
         binfile = open(file_path,'rb')
         size = os.path.getsize(file_path)
@@ -18,7 +18,7 @@ def read_bin(file_path):
     except:
         assert False, "file not exist"
 
-def write_bin(file_path, bary):
+def writeBinFile(file_path, bary):
     try:
         binfile = open(file_path,'wb')
         binfile.write(bary)
@@ -26,13 +26,13 @@ def write_bin(file_path, bary):
     except:
         assert False, "file not exist"
 
-def compute_checksum32(bary, seed : int = 0):
+def computeChecksum32(bary, seed : int = 0):
     assert len(bary) % 4 == 0, "invalid buffer for checksum32"
     for i in range(0, len(bary), 4):
         seed += int.from_bytes(bary[i:i+4], byteorder='little', signed=False)
     return seed & 0xFFFFFFFF
 
-def find_argvalue(long_name : str, short_name : str = None):
+def __findArgValue(long_name : str, short_name : str = None):
     assert None == short_name or len(short_name) == 1, "invalid short_name"
     for i in range(1, len(sys.argv) - 1):
         arg = sys.argv[i]
@@ -42,7 +42,7 @@ def find_argvalue(long_name : str, short_name : str = None):
             return sys.argv[i + 1]
     return None
 
-def find_arg(long_name : str, short_name : str = None):
+def __findArg(long_name : str, short_name : str = None):
     assert None == short_name or len(short_name) == 1, "invalid short_name"
     for i in range(1, len(sys.argv)):
         arg = sys.argv[i]
@@ -82,11 +82,11 @@ if __name__ == "__main__":
     fname_s = fname_i.split('/')[-1].split('.')[0]
     #print(fname_s)
     fname_o = fname_i[0:len(fname_i) - 4] + "_sign.bin"
-    in_b = read_bin(fname_i)
+    in_b = readBinFile(fname_i)
     sign = GfAuroraWorkloadSign()
     sign.decode(in_b)
     if len(sys.argv) == 2:
-        chks = compute_checksum32(in_b)
+        chks = computeChecksum32(in_b)
         if 0 != chks:
             print("!!!!! invalid checksum (%x) !!!!!" % chks)
         else:
@@ -99,23 +99,23 @@ if __name__ == "__main__":
     else:
         sign.name = bytes(fname_s, encoding = 'utf-8')
         sign.size_in_bytes = len(in_b)
-        tag_s = find_argvalue("tag", 't')
+        tag_s = __findArgValue("tag", 't')
         if None is not tag_s:
             sign.tag = bytes(tag_s, encoding = 'utf-8')
-        repo_s = find_argvalue("repo", 'r')
+        repo_s = __findArgValue("repo", 'r')
         if None is not repo_s:
             sign.repo = bytes(repo_s, encoding = 'utf-8')
-        branch_s = find_argvalue("branch", 'b')
+        branch_s = __findArgValue("branch", 'b')
         if None is not branch_s:
             sign.branch = bytes(branch_s, encoding = 'utf-8')
         sign.checksum32 = 0
         buf = sign.encode()
-        chks = compute_checksum32(buf, 0)
-        chks = compute_checksum32(in_b[len(buf):], chks)
+        chks = computeChecksum32(buf, 0)
+        chks = computeChecksum32(in_b[len(buf):], chks)
         sign.checksum32 = ((~chks) & 0xFFFFFFFF) + 1
         print("checksum32 is: %x" % sign.checksum32)
         buf = sign.encode()
         out_b = buf + in_b[len(buf):]
-        write_bin(fname_o, out_b)
+        writeBinFile(fname_o, out_b)
         print("output to: ", fname_o)
     print(" >>>>> done <<<<<")
