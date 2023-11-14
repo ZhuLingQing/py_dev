@@ -69,11 +69,10 @@ def exeBash(cmd, disp : bool = False):
     cmd = shlex.split(cmd)
     rc = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     if disp == True:
-        while rc.poll() != None:
+        while rc.poll() == None:
             l = rc.stdout.readline()
             print(str(l, encoding='utf-8'))
-    else:
-        rc.wait()
+    rc.wait()
     return rc.returncode
 
 def md5sum(file_path_name):
@@ -115,10 +114,10 @@ if len(sys.argv) == 2:
 for kwl in kWorkloads:
     wl = dWorkloads[kwl]
     gordian_cmd = gordian_path + " " + wl["arg"] + " hex " + model_zoo_path + wl["hex"] + " pe " + model_zoo_path + wl["pe"] + " log f dump t dumpx " + wl["dumpx"]
-    rc = exeBash(gordian_cmd)
+    rc = exeBash(gordian_cmd, disp = False)
     if 0 != rc:
         print(gordian_cmd)
-        print("Failed %d" % rc)
+        print("Gordian failed", str(rc))
         sys.exit(rc)
     md5 = checkOutput(v8binary_path + wl["output"])
     if None == md5:
@@ -126,4 +125,5 @@ for kwl in kWorkloads:
         sys.exit(1)
     else:
         print(wl["name"], "MD5:", md5, "PASS")
+print(" >>>>> done <<<<<")
 sys.exit(0)
