@@ -119,3 +119,4 @@ if __name__ == "__main__":
         writeBinFile(fname_o, out_b)
         print("output to: ", fname_o)
     print(" >>>>> done <<<<<")
+    sys.exit(0)
