@@ -33,3 +33,13 @@
 ```bash
 >python py_cpy.py --tag $tag_name
 ```
+
+---
+## exe_wl.py
+-use subprocess to execute bash and other script.  
+-which could fetch process the output and return code.  
+-this script is dedicated for gordian end to end verify.   
+```bash
+>python exe_wl.py
+>python exe_wl.py mlp
+```
