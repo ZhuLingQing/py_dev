@@ -38,8 +38,10 @@
 ## exe_wl.py
 -use subprocess to execute bash and other script.  
 -which could fetch process the output and return code.  
+-support git commit fetch.  
+-support os.chdir() path move.  
 -this script is dedicated for gordian end to end verify.   
 ```bash
 >python exe_wl.py
->python exe_wl.py mlp
+>python exe_wl.py $workload_name
 ```

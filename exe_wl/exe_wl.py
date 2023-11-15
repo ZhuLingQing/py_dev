@@ -2,7 +2,7 @@ import sys,os,shutil
 import subprocess
 import shlex
 
-gordian_path = "/nfs/homes/tzhu/projects/pace2/gordian/funcsim_lin"
+gordian_path = "/nfs/homes/tzhu/projects/pace2/gordian/"
 v8binary_path = "/nfs/homes/tzhu/projects/pace2/v8binary/"
 model_zoo_path = "/nfs/homes/tzhu/projects/pace2/model_zoo.ssd18/"
 
@@ -46,6 +46,22 @@ dWorkloads = {
         "hex" : "monte-carlo/golden/mc_input_wgt_regression.hex",
         "pe" : "build_pld/monte-carlo/nonai_mlp.elf",
         "output" : "monte-carlo/mc_output.hex.bin"
+    },
+    "ssd18" : {
+        "name": "ssd-resnet18",
+        "arg" : "sel [mcp_4pe]",
+        "dumpx" : "0x3000000,904000,904000",
+        "hex" : "ssd-resnet18/golden/codegen_weight_input285_full_len.hex",
+        "pe" : "build_pld/ssd-resnet18/ssd_res18.elf",
+        "output" : "ssd-resnet18/output.hex.bin"
+    },
+    "res50" : {
+        "name": "resnet50",
+        "arg" : "sel [mcp_4pe]",
+        "dumpx" : "0x3000000,1024,1000",
+        "hex" : "resnet50/codegen_weight_e2e_lemur.hex",
+        "pe" : "build_pld/resnet50/resnet50.elf",
+        "output" : "resnet50/resnet50_56layers_output.hex.bin"
     }
 }
 
@@ -86,6 +102,16 @@ def md5sum(file_path_name):
     else:
         md5 = str(rc.stdout.readline(),encoding='utf-8')
         return md5.split(' ')[0]
+
+def getGitCommit(path):
+    os.chdir(path)
+    cmd = shlex.split("git log -n 1")
+    rc = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    rc.wait()
+    l = str(rc.stdout.readline(), encoding='utf-8').split(' ')
+    if l[0] != "commit":
+        assert False, path + "can't get git commit"
+    return l[1][0:-1]
     
 def checkOutput(golden_file_path, output_path : str = '.'):
     md5_g = md5sum(golden_file_path)
@@ -99,9 +125,9 @@ def checkOutput(golden_file_path, output_path : str = '.'):
             return None
         #print("output:", md5_o)
         if md5_o != md5_g:
-            print(md5_g)
-            print(md5_o)
-            print("output %d isn't same" % i)
+            #print(md5_g)
+            #print(md5_o)
+            #print("output %d isn't same" % i)
             return None
     return md5_g
 
@@ -111,19 +137,25 @@ if len(sys.argv) == 2:
     assert sys.argv[1] in kWorkloads, "arg1 not found in workload list" + str(kWorkloads)
     kWorkloads = [sys.argv[1]]
 
+current_dir = os.path.dirname(os.path.abspath(__file__))
+print("Gordian : \033[33m" + getGitCommit(gordian_path)+"\033[0m")
+print("ModelZoo: \033[33m" + getGitCommit(model_zoo_path)+"\033[0m")
+print("v8binary: \033[33m" + getGitCommit(v8binary_path)+"\033[0m")
+os.chdir(gordian_path)
 for kwl in kWorkloads:
     wl = dWorkloads[kwl]
-    gordian_cmd = gordian_path + " " + wl["arg"] + " hex " + model_zoo_path + wl["hex"] + " pe " + model_zoo_path + wl["pe"] + " log f dump t dumpx " + wl["dumpx"]
+    gordian_cmd = "./funcsim_lin " + wl["arg"] + " hex " + model_zoo_path + wl["hex"] + " pe " + model_zoo_path + wl["pe"] + " log f dump t dumpx " + wl["dumpx"]
     rc = exeBash(gordian_cmd, disp = False)
     if 0 != rc:
         print(gordian_cmd)
         print("Gordian failed", str(rc))
-        sys.exit(rc)
+        break
     md5 = checkOutput(v8binary_path + wl["output"])
     if None == md5:
-        print(wl["name"], "MD5 not same! FAIL")
-        sys.exit(1)
+        print(str("%-20s" % wl["name"]), "MD5: not same! \033[31mFAIL\033[0m")
+        break
     else:
-        print(wl["name"], "MD5:", md5, "PASS")
+        print(str("%-20s" % wl["name"]), "MD5:", md5, "\033[32mPASS\033[0m")
 print(" >>>>> done <<<<<")
-sys.exit(0)
+os.chdir(current_dir)
+sys.exit(rc)
