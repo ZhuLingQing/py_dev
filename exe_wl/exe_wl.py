@@ -5,9 +5,14 @@ import shlex
 from datetime import datetime
 import time
 
-gordian_path = "/nfs/homes/tzhu/projects/pace2/gordian/"
-v8binary_path = "/nfs/homes/tzhu/projects/pace2/v8binary/"
-model_zoo_path = "/nfs/homes/tzhu/projects/pace2/model_zoo.ssd18/"
+_FAIL_ = "\033[31mFAIL\033[0m"
+_PASS_ = "\033[32mPASS\033[0m"
+
+dPath = {
+    "gordian"  : "/nfs/homes/tzhu/projects/pace2/gordian/",
+    "v8binary" : "/nfs/homes/tzhu/projects/pace2/v8binary/",
+    "modelZoo" : "/nfs/homes/tzhu/projects/pace2/model_zoo.ssd18/"
+}
 
 dWorkloads = {
     "is64" : {
@@ -73,9 +78,6 @@ def reaadBinFile(file_path):
         binfile = open(file_path,'rb')
         size = os.path.getsize(file_path)
         data = binfile.read(size)
-        #data = []
-        #for i in range(size):
-        #    data.append(binfile.read(1))
         binfile.close()
         return data
     except:
@@ -95,7 +97,7 @@ def exeBash(cmd, timeout = None, disp : bool = False):
 def md5sum(file_path_name):
     md5sum_cmd = "md5sum " + file_path_name
     rc = exeBash(md5sum_cmd)
-    assert rc[0] == 0, "md5sum " + file_path_name + "\033[31mFAIL\033[0m"
+    assert rc[0] == 0, "md5sum " + file_path_name + _FAIL_
     return rc[1][0].split(' ')[0]
 
 def getGitCommit(path):
@@ -113,7 +115,7 @@ def checkOutput(golden_file_path, output_path : str = '.'):
     for i in range(0, 4):
         md5_o = md5sum(output_path + str.format("/output_%d.bin " % i))
         if md5_o != md5_g:
-            print("MD5 check \033[31mFAIL\033[0m.")
+            print("MD5 check " + _FAIL_)
             return None
     return md5_g
 
@@ -130,34 +132,34 @@ if len(sys.argv) == 2:
 
 #current_dir = os.path.dirname(os.path.abspath(__file__))
 # print repo commits
-print("Gordian : \033[33m" + getGitCommit(gordian_path)+"\033[0m")
-print("ModelZoo: \033[33m" + getGitCommit(model_zoo_path)+"\033[0m")
-print("v8binary: \033[33m" + getGitCommit(v8binary_path)+"\033[0m")
+kPath = [*dPath]
+for kp in kPath:
+    print("%-10s : \033[33m%s\033[0m" % (kp, getGitCommit(dPath[kp])))
 # try find the elf files, if not exist try rebuild.
-rc = findFiles(model_zoo_path, "*.elf")
+rc = findFiles(dPath["modelZoo"], "*.elf")
 if len(rc) == 0: #no elf found
     print("\033[34mNo elf found, try to build.\033[0m")
-    os.chdir(model_zoo_path)
+    os.chdir(dPath["modelZoo"])
     rc = exeBash("make pld -j", disp = False)
     if rc[0] != 0:
-        print("Build model_zoo failed.", rc[0])
+        print("Build model_zoo %d %s." % (rc[0], _FAIL_))
         sys.exit(rc[0])
 # jump to gordian folder, then run the gordian script
-os.chdir(gordian_path)
+os.chdir(dPath["gordian"])
 for kwl in kWorkloads:
     wl = dWorkloads[kwl]
     # check whether all related files exist.
-    if len(findFiles(model_zoo_path, wl["hex"])) == 0:
+    if len(findFiles(dPath["modelZoo"], wl["hex"])) == 0:
         print("input+weight hex file not exist")
         sys.exit(1)
-    if len(findFiles(model_zoo_path, wl["pe"])) == 0:
+    if len(findFiles(dPath["modelZoo"], wl["pe"])) == 0:
         print("firmware image elf file not exist")
         sys.exit(1)
-    if len(findFiles(v8binary_path, wl["output"])) == 0:
+    if len(findFiles(dPath["v8binary"], wl["output"])) == 0:
         print("output binary file not exist")
         sys.exit(1)
     # execute gordian script
-    gordian_cmd = "./funcsim_lin " + wl["arg"] + " hex " + model_zoo_path + wl["hex"] + " pe " + model_zoo_path + wl["pe"] + " log f dump t dumpx " + wl["dumpx"]
+    gordian_cmd = "./funcsim_lin " + wl["arg"] + " hex " + dPath["modelZoo"] + wl["hex"] + " pe " + dPath["modelZoo"] + wl["pe"] + " log f dump t dumpx " + wl["dumpx"]
     start_t = datetime.now()
     rc = exeBash(gordian_cmd, timeout = 15, disp = False)
     if 0 != rc[0]:
@@ -166,12 +168,12 @@ for kwl in kWorkloads:
         break
     end_t = datetime.now()
     durn = (end_t - start_t).seconds
-    md5 = checkOutput(v8binary_path + wl["output"])
+    md5 = checkOutput(dPath["v8binary"] + wl["output"])
     if None == md5:
-        print(str("%-20s" % wl["name"]), "MD5: not same! \033[31mFAIL\033[0m ")
+        print(str("%-20s" % wl["name"]), "MD5: not same!", _FAIL_)
         break
     else:
-        print(str("%-20s" % wl["name"]), "MD5:", md5, "\033[32mPASS\033[0m ", str.format("take %ds" % durn))
+        print(str("%-20s" % wl["name"]), "MD5:", md5, _PASS_, str.format("take %ds" % durn))
 print(" >>>>> done <<<<<")
 #os.chdir(current_dir)
 sys.exit(rc[0])
