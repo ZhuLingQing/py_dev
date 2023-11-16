@@ -5,13 +5,20 @@ import shlex
 from datetime import datetime
 import time
 
-_FAIL_ = "\033[31mFAIL\033[0m"
-_PASS_ = "\033[32mPASS\033[0m"
+_COLOR_DEFAULT_ = "\033[0m"
+_COLOR_RED_ = "\033[31m"
+_COLOR_GREEN_ = "\033[32m"
+_COLOR_YELLOW_ = "\033[33m"
+_COLOR_BLUE_ = "\033[1;34m"
+_FAIL_ = _COLOR_RED_+"FAIL"+_COLOR_DEFAULT_
+_PASS_ = _COLOR_GREEN_+"PASS"+_COLOR_DEFAULT_
 
+# This is default path in tzhu environment
+# You can use $GORDIAN_ROOT, $V8BINARY_ROOT, $MODELZOO_ROOT to override them.
 dPath = {
-    "gordian"  : "/nfs/homes/tzhu/projects/pace2/gordian/",
-    "v8binary" : "/nfs/homes/tzhu/projects/pace2/v8binary/",
-    "modelZoo" : "/nfs/homes/tzhu/projects/pace2/model_zoo.ssd18/"
+    "GORDIAN"  : "/nfs/homes/tzhu/projects/pace2/gordian/",
+    "V8BINARY" : "/nfs/homes/tzhu/projects/pace2/v8binary/",
+    "MODELZOO" : "/nfs/homes/tzhu/projects/pace2/model_zoo.ssd18/"
 }
 
 dWorkloads = {
@@ -60,8 +67,17 @@ dWorkloads = {
         "arg" : "sel [mcp_4pe]",
         "dumpx" : "0x3000000,904000,904000",
         "hex" : "ssd-resnet18/golden/codegen_weight_input285_full_len.hex",
-        "pe" : "build_pld/ssd-resnet18/ssd_res18.elf",
+        "pe" : "build_pld/ssd_resnet18/ssd_res18.elf",
         "output" : "ssd-resnet18/output.hex.bin"
+    },
+    "ssd34" : {
+        "name": "ssd-resnet34",
+        "arg" : "sel [mcp_4pe]",
+        "dumpx" : "0x3000000,1048576,904448",
+        "hex" : "ssd_resnet34/golden/ssd34_input_wgt.hex",
+        "pe" : "build_pld/ssd_resnet34/ssd_res34.elf",
+        "output" : "ssd-resnet34/total_output_golden.bin",
+        "post_proc" : "ssd34outputProc"
     },
     "res50" : {
         "name": "resnet50",
@@ -70,10 +86,40 @@ dWorkloads = {
         "hex" : "resnet50/codegen_weight_e2e_lemur.hex",
         "pe" : "build_pld/resnet50/resnet50.elf",
         "output" : "resnet50/resnet50_56layers_output.hex.bin"
+    },
+    "res50bc2" : {
+        "name": "resnet50bc2",
+        "arg" : "sel [mcp_4pe]",
+        "dumpx" : "0x3000000,2048,2048",
+        "hex" : "resnet50_batch2_dc/golden/m3_mqbench_qmodel_deploy_no_pot_scale.hex",
+        "pe" : "build_pld/resnet50_batch2_dc/resnet50bc2.elf",
+        "output" : "resnet50/resnet50_56layers_batch2_output.hex.bin"
     }
 }
 
-def reaadBinFile(file_path):
+
+def ssd34outputProc(file_path):
+    l_gap = 32
+    l_size = (563264, 51264, 204864, 12864, 51264, 3264, 12864,  832,   3200,   320,   384,   64)
+    bary = readBinFile(file_path)
+    baout = bytes()
+    offset = 0
+    for size in l_size:
+        baout += bytes([0]*l_gap)
+        baout += bary[offset + l_gap : offset + size]
+        offset += size
+    writeBinFile(file_path, baout)
+    #return baout
+
+def writeBinFile(file_path, bary):
+    try:
+        binfile = open(file_path,'wb')
+        binfile.write(bary)
+        binfile.close()
+    except:
+        assert False, "file not exist"
+
+def readBinFile(file_path):
     try:
         binfile = open(file_path,'rb')
         size = os.path.getsize(file_path)
@@ -83,15 +129,44 @@ def reaadBinFile(file_path):
     except:
         assert False, "file not exist"
 
-def exeBash(cmd, timeout = None, disp : bool = False):
+def getSttyWidth():
+    rows, columns = subprocess.check_output(['stty', 'size']).split()
+    #print("%d rows, and %d cols" % (int(rows), int(columns)))
+    return int(columns)
+
+def getPath():
+    # print repo commits
+    kPath = [*dPath]
+    print(_COLOR_BLUE_+"The commits of the repos:"+_COLOR_DEFAULT_)
+    for kp in kPath:
+        try:
+            path_ = os.environ[kp+"_ROOT"]
+            dPath[kp] = path_
+        except:
+            path_ = None
+        if os.path.exists(dPath[kp]) == False:
+            print(str.format("%-10s"%kp)+" : " + dPath[kp]+_COLOR_RED_+" Not exist "+_COLOR_DEFAULT_)
+            sys.exit(1)
+        print("%-10s : %s" % (kp, _COLOR_YELLOW_+getGitCommit(dPath[kp])+_COLOR_DEFAULT_))
+
+def exeBash(cmd, timeout : int = None, disp : bool = False):
+    tty_width = getSttyWidth()
+    start_t = datetime.now()
+    max_len = 0
     llog = []
     cmd = shlex.split(cmd)
     rc = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     while rc.poll() == None:
-        l = str(rc.stdout.readline(), encoding='utf-8')
-        if len(l) > 1: llog.append(l[0:-1])
-        if disp == True: print(l)
-    rc.wait(timeout)
+        l = str(rc.stdout.readline(), encoding='utf-8')[0:-1]
+        if len(l) > 0:
+            llog.append(l)
+            if disp == True: print(l[0:tty_width],end='\r')
+            if len(l) > max_len: max_len = len(l)
+    if disp == True and max_len:
+        space_ = " "
+        if max_len > tty_width: max_len = tty_width
+        print(space_.center(max_len,' '),end='\r')
+    rc.wait()
     return (rc.returncode, llog)
 
 def md5sum(file_path_name):
@@ -120,60 +195,71 @@ def checkOutput(golden_file_path, output_path : str = '.'):
     return md5_g
 
 def findFiles(path, name):
-    find_cmd = "find " + path + " -name " + name
+    filepath,fullflname = os.path.split(name)
+    find_cmd = "find " + path + " -name " + fullflname
     rc = exeBash(find_cmd)
+    #print("FIND: ",rc[1])
     return rc[1]
+
+def checkFileExist(path_name):
+    return os.path.exists(path_name)
+
+def executeEndToEndTest(wl):
+    # check whether all related files exist.
+    if checkFileExist(dPath["MODELZOO"] + wl["hex"]) == False:
+        print("input+weight hex file not exist")
+        return 1
+    if checkFileExist(dPath["MODELZOO"] + wl["pe"]) == False:
+        print("firmware image elf file not exist")
+        return 1
+    if checkFileExist(dPath["V8BINARY"] + wl["output"]) == False:
+        print("output binary file not exist")
+        return 1
+    # execute gordian script
+    gordian_cmd = "./funcsim_lin " + wl["arg"] + " hex " + dPath["MODELZOO"] + wl["hex"] + " pe " + dPath["MODELZOO"] + wl["pe"] + " log f dump t dumpx " + wl["dumpx"]
+    start_t = datetime.now()
+    rc = exeBash(gordian_cmd, timeout = 5, disp = True)
+    end_t = datetime.now()
+    durn = (end_t - start_t).seconds
+    if 0 != rc[0]:
+        print(gordian_cmd)
+        print("%-20s Gordian return %d %s" % (wl["name"], rc[0], _FAIL_))
+        return rc[0]
+    else:
+        #if wl["name"] == "ssd-resnet34":
+        if 'post_proc' in wl:
+            for i in range(0, 4):
+                eval(wl['post_proc'])(dPath["GORDIAN"]+str.format("output_%d.bin" % i))
+        md5 = checkOutput(dPath["V8BINARY"] + wl["output"])
+        if None == md5:
+            print(str("%-20s" % wl["name"]), "MD5: not same!", _FAIL_)
+            return 2
+        else:
+            print(str("%-20s" % wl["name"]), "MD5:", md5, _PASS_, str.format("take %ds" % durn))
+    return 0
 
 kWorkloads = [*dWorkloads]
 
 if len(sys.argv) == 2:
-    assert sys.argv[1] in kWorkloads, "arg1 not found in workload list" + str(kWorkloads)
+    assert sys.argv[1] in kWorkloads, _COLOR_RED_+"arg1 not found in workload list: " + _COLOR_BLUE_+str(kWorkloads)+_COLOR_DEFAULT_
     kWorkloads = [sys.argv[1]]
 
 #current_dir = os.path.dirname(os.path.abspath(__file__))
-# print repo commits
-kPath = [*dPath]
-for kp in kPath:
-    print("%-10s : \033[33m%s\033[0m" % (kp, getGitCommit(dPath[kp])))
+getPath()
 # try find the elf files, if not exist try rebuild.
-rc = findFiles(dPath["modelZoo"], "*.elf")
+rc = findFiles(dPath["MODELZOO"], "*.elf")
 if len(rc) == 0: #no elf found
-    print("\033[34mNo elf found, try to build.\033[0m")
-    os.chdir(dPath["modelZoo"])
+    print(_COLOR_BLUE_+"No elf found, try to build."+_COLOR_DEFAULT_)
+    os.chdir(dPath["MODELZOO"])
     rc = exeBash("make pld -j", disp = False)
     if rc[0] != 0:
         print("Build model_zoo %d %s." % (rc[0], _FAIL_))
         sys.exit(rc[0])
 # jump to gordian folder, then run the gordian script
-os.chdir(dPath["gordian"])
+print(_COLOR_BLUE_+"The gordian end to end test:"+_COLOR_DEFAULT_)
+os.chdir(dPath["GORDIAN"])
 for kwl in kWorkloads:
-    wl = dWorkloads[kwl]
-    # check whether all related files exist.
-    if len(findFiles(dPath["modelZoo"], wl["hex"])) == 0:
-        print("input+weight hex file not exist")
-        sys.exit(1)
-    if len(findFiles(dPath["modelZoo"], wl["pe"])) == 0:
-        print("firmware image elf file not exist")
-        sys.exit(1)
-    if len(findFiles(dPath["v8binary"], wl["output"])) == 0:
-        print("output binary file not exist")
-        sys.exit(1)
-    # execute gordian script
-    gordian_cmd = "./funcsim_lin " + wl["arg"] + " hex " + dPath["modelZoo"] + wl["hex"] + " pe " + dPath["modelZoo"] + wl["pe"] + " log f dump t dumpx " + wl["dumpx"]
-    start_t = datetime.now()
-    rc = exeBash(gordian_cmd, timeout = 15, disp = False)
-    if 0 != rc[0]:
-        print(gordian_cmd)
-        print("Gordian failed", str(rc))
-        break
-    end_t = datetime.now()
-    durn = (end_t - start_t).seconds
-    md5 = checkOutput(dPath["v8binary"] + wl["output"])
-    if None == md5:
-        print(str("%-20s" % wl["name"]), "MD5: not same!", _FAIL_)
-        break
-    else:
-        print(str("%-20s" % wl["name"]), "MD5:", md5, _PASS_, str.format("take %ds" % durn))
+    executeEndToEndTest(dWorkloads[kwl])
 print(" >>>>> done <<<<<")
 #os.chdir(current_dir)
-sys.exit(rc[0])
+sys.exit(0)
