@@ -1,7 +1,7 @@
 # py_dev  
 
 ---
-## py_bin  
+## py_bin_scaler  
 -binary file data scaler.  
 ```bash
 >python py_bin.py $bin_file_path_name $scale_from:$scale_to
