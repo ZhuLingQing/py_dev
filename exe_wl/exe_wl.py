@@ -21,6 +21,8 @@ dPath = {
     "MODELZOO" : "/nfs/homes/tzhu/projects/pace2/model_zoo.ssd18/"
 }
 
+dPathGOLDFINGER = "build_pld/_deps/gf_aurora-src"
+
 dWorkloads = {
     "is64" : {
         "name": "ising64x64",
@@ -66,7 +68,7 @@ dWorkloads = {
         "name": "ssd-resnet18",
         "arg" : "sel [mcp_4pe]",
         "dumpx" : "0x3000000,904000,904000",
-        "hex" : "ssd-resnet18/golden/codegen_weight_input285_full_len.hex",
+        "hex" : "ssd_resnet18/golden/codegen_weight_input285_full_len.hex",
         "pe" : "build_pld/ssd_resnet18/ssd_res18.elf",
         "output" : "ssd-resnet18/output.hex.bin"
     },
@@ -147,10 +149,11 @@ def getPath():
         if os.path.exists(dPath[kp]) == False:
             print(str.format("%-10s"%kp)+" : " + dPath[kp]+_COLOR_RED_+" Not exist "+_COLOR_DEFAULT_)
             sys.exit(1)
-        print("%-10s : %s" % (kp, _COLOR_YELLOW_+getGitCommit(dPath[kp])+_COLOR_DEFAULT_))
+        print("%-10s : %s" % (kp, _COLOR_YELLOW_+getGitCommit(dPath[kp])+" ("+ getGitBranch(dPath[kp]) + ")" + _COLOR_DEFAULT_))
+    print("%-10s : %s" % ("GF_AURORA", _COLOR_YELLOW_+getGitCommit(dPath[kp]+dPathGOLDFINGER)+" ("+ getGitBranch(dPath[kp]+dPathGOLDFINGER) + ")"+_COLOR_DEFAULT_))
 
 def exeBash(cmd, timeout : int = None, disp : bool = False):
-    tty_width = getSttyWidth()
+    tty_width = getSttyWidth() - 4
     start_t = datetime.now()
     max_len = 0
     llog = []
@@ -184,6 +187,14 @@ def getGitCommit(path):
     if l[0] != "commit":
         assert False, path + "can't get git commit"
     return l[1][0:-1]
+
+def getGitBranch(path):
+    commit = getGitCommit(path)
+    cmd = shlex.split("git branch -r --contains " + commit)
+    rc = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    rc.wait()
+    l = str(rc.stdout.readline(), encoding='utf-8').split(' ')[-1]
+    return l[0:-1]
     
 def checkOutput(golden_file_path, output_path : str = '.'):
     md5_g = md5sum(golden_file_path)
@@ -207,13 +218,13 @@ def checkFileExist(path_name):
 def executeEndToEndTest(wl):
     # check whether all related files exist.
     if checkFileExist(dPath["MODELZOO"] + wl["hex"]) == False:
-        print("input+weight hex file not exist")
+        print(str("%-20s" % wl["name"]), "input+weight hex file not exist")
         return 1
     if checkFileExist(dPath["MODELZOO"] + wl["pe"]) == False:
-        print("firmware image elf file not exist")
+        print(str("%-20s" % wl["name"]), "firmware image elf file not exist")
         return 1
     if checkFileExist(dPath["V8BINARY"] + wl["output"]) == False:
-        print("output binary file not exist")
+        print(str("%-20s" % wl["name"]), "output binary file not exist")
         return 1
     # execute gordian script
     gordian_cmd = "./funcsim_lin " + wl["arg"] + " hex " + dPath["MODELZOO"] + wl["hex"] + " pe " + dPath["MODELZOO"] + wl["pe"] + " log f dump t dumpx " + wl["dumpx"]
@@ -251,7 +262,7 @@ rc = findFiles(dPath["MODELZOO"], "*.elf")
 if len(rc) == 0: #no elf found
     print(_COLOR_BLUE_+"No elf found, try to build."+_COLOR_DEFAULT_)
     os.chdir(dPath["MODELZOO"])
-    rc = exeBash("make pld -j", disp = False)
+    rc = exeBash("make pld -j", disp = True)
     if rc[0] != 0:
         print("Build model_zoo %d %s." % (rc[0], _FAIL_))
         sys.exit(rc[0])

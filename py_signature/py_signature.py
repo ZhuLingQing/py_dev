@@ -32,6 +32,14 @@ def computeChecksum32(bary, seed : int = 0):
         seed += int.from_bytes(bary[i:i+4], byteorder='little', signed=False)
     return seed & 0xFFFFFFFF
 
+def checkGfAuroraHardcode(bary):
+    hardcode_offset = 0x80
+    hardcode_str = str("f32710309583858ba1cf739007300967")
+    hardcode_ary = bary[hardcode_offset:hardcode_offset+int(len(hardcode_str)/2)].hex()
+    #print(hardcode_ary)
+    assert hardcode_ary == hardcode_str, "invalid hard code segement"
+    return hardcode_ary
+
 def __findArgValue(long_name : str, short_name : str = None):
     assert None == short_name or len(short_name) == 1, "invalid short_name"
     for i in range(1, len(sys.argv) - 1):
@@ -57,9 +65,9 @@ class GfAuroraWorkloadSign(LittleEndianStructure):
     _pack_ = 1
     _fields_ = [
         ('name', c_char * 16),
-        ('version', c_int32),
-        ('checksum32', c_int32),
-        ('size_in_bytes', c_int32),
+        ('version', c_uint32),
+        ('checksum32', c_uint32),
+        ('size_in_bytes', c_uint32),
         ('tag', c_char * 20),
         ('repo', c_char * 16),
         ('branch', c_char * 16),
@@ -85,6 +93,7 @@ if __name__ == "__main__":
     in_b = readBinFile(fname_i)
     sign = GfAuroraWorkloadSign()
     sign.decode(in_b)
+    checkGfAuroraHardcode(in_b)
     if len(sys.argv) == 2:
         chks = computeChecksum32(in_b)
         if 0 != chks:
