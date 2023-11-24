@@ -1,5 +1,4 @@
 import sys,os
-import git
 
 from exe_bash import exeBash
 
