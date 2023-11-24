@@ -16,9 +16,9 @@ _PASS_ = _COLOR_GREEN_+"PASS"+_COLOR_DEFAULT_
 # This is default path in tzhu environment
 # You can use $GORDIAN_ROOT, $V8BINARY_ROOT, $MODELZOO_ROOT to override them.
 dPath = {
-    "GORDIAN"  : "/nfs/homes/tzhu/projects/pace2/gordian/",
-    "V8BINARY" : "/nfs/homes/tzhu/projects/pace2/v8binary/",
-    "MODELZOO" : "/nfs/homes/tzhu/projects/pace2/model_zoo.ssd18/"
+    "GORDIAN"  : "xxx",#"/nfs/homes/tzhu/projects/pace2/gordian/",
+    "V8BINARY" : "xxx",#"/nfs/homes/tzhu/projects/pace2/v8binary/",
+    "MODELZOO" : "xxx",#"/nfs/homes/tzhu/projects/pace2/model_zoo.ssd18/"
 }
 
 dPathGOLDFINGER = "build_pld/_deps/gf_aurora-src"
@@ -95,10 +95,23 @@ dWorkloads = {
         "dumpx" : "0x3000000,2048,2048",
         "hex" : "resnet50_batch2_dc/golden/m3_mqbench_qmodel_deploy_no_pot_scale.hex",
         "pe" : "build_pld/resnet50_batch2_dc/resnet50bc2.elf",
-        "output" : "resnet50/resnet50_56layers_batch2_output.hex.bin"
+        "output" : "resnet50/resnet50_56layers_batch2_output.hex.bin",
+        #"post_proc" : "res50midProc"
     }
 }
 
+def res50midProc(file_path):
+    l_gap = 32
+    l_size = (1605696, 401472, 401472, 401472, 1605696, 1605696, 401472, 401472, 1605696, 401472, 401472, 1605696, 802880, 200768, 802880, 802880, 200768, 200768, 802880, 200768, 200768, 802880, 200768, 200768, 802880, 401472, 100416, 401472, 401472, 100416, 100416, 401472, 100416, 100416, 401472, 100416, 100416, 401472, 100416, 100416, 401472, 100416, 100416, 401472, 200768, 50240, 200768, 200768, 50240, 50240, 200768, 50240, 50240, 200768, 4160, 2112)
+    bary = readBinFile(file_path)
+    baout = bytes()
+    offset = 0
+    for size in l_size:
+        baout += bytes([0]*l_gap)
+        baout += bary[offset + l_gap : offset + size - 32]
+        baout += bytes([0]*l_gap)
+        offset += size
+    writeBinFile(file_path, baout)
 
 def ssd34outputProc(file_path):
     l_gap = 32
@@ -147,15 +160,16 @@ def getPath():
         except:
             path_ = None
         if os.path.exists(dPath[kp]) == False:
-            print(str.format("%-10s"%kp)+" : " + dPath[kp]+_COLOR_RED_+" Not exist "+_COLOR_DEFAULT_)
+            print(str.format("%-10s"%kp)+" : " + dPath[kp]+_COLOR_RED_+" Not exist "+_COLOR_DEFAULT_, "You need export "+kp+"_ROOT=<path>")
             sys.exit(1)
         print("%-10s : %s" % (kp, _COLOR_YELLOW_+getGitCommit(dPath[kp])+" ("+ getGitBranch(dPath[kp]) + ")" + _COLOR_DEFAULT_))
-    print("%-10s : %s" % ("GF_AURORA", _COLOR_YELLOW_+getGitCommit(dPath[kp]+dPathGOLDFINGER)+" ("+ getGitBranch(dPath[kp]+dPathGOLDFINGER) + ")"+_COLOR_DEFAULT_))
+        if dPath[kp][-1] != "/":
+            dPath[kp] += "/"
 
 def exeBash(cmd, timeout : int = None, disp : bool = False):
     tty_width = getSttyWidth() - 4
     start_t = datetime.now()
-    max_len = 0
+    #max_len = 0
     llog = []
     cmd = shlex.split(cmd)
     rc = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -163,12 +177,9 @@ def exeBash(cmd, timeout : int = None, disp : bool = False):
         l = str(rc.stdout.readline(), encoding='utf-8')[0:-1]
         if len(l) > 0:
             llog.append(l)
-            if disp == True: print(l[0:tty_width],end='\r')
-            if len(l) > max_len: max_len = len(l)
-    if disp == True and max_len:
-        space_ = " "
-        if max_len > tty_width: max_len = tty_width
-        print(space_.center(max_len,' '),end='\r')
+            if disp == True: print(l[0:tty_width]+' '*(tty_width - len(l[0:tty_width])), end='\r')
+    if disp is True:
+        print(' '*tty_width, end='\r')
     rc.wait()
     return (rc.returncode, llog)
 
@@ -266,6 +277,7 @@ if len(rc) == 0: #no elf found
     if rc[0] != 0:
         print("Build model_zoo %d %s." % (rc[0], _FAIL_))
         sys.exit(rc[0])
+print("%-10s : %s" % ("GF_AURORA", _COLOR_YELLOW_+getGitCommit(dPath["MODELZOO"]+dPathGOLDFINGER)+" ("+ getGitBranch(dPath["MODELZOO"]+dPathGOLDFINGER) + ")"+_COLOR_DEFAULT_))
 # jump to gordian folder, then run the gordian script
 print(_COLOR_BLUE_+"The gordian end to end test:"+_COLOR_DEFAULT_)
 os.chdir(dPath["GORDIAN"])

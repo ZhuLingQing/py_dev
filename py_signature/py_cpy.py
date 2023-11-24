@@ -14,17 +14,17 @@ dPath = {
 }
 
 # from, to
-workloads = (
-    {"name" : "ising64", "modelzoo_sub_path" : "ising/64x64", "f_name" : "nonai_ising64" },
-    {"name" : "ising128", "modelzoo_sub_path" : "ising/128x128", "f_name" : "nonai_ising128" },
-    {"name" : "ln", "modelzoo_sub_path" : "linear-solver", "f_name" : "nonai_ln" },
-    {"name" : "mlp", "modelzoo_sub_path" : "monte-carlo", "f_name" : "nonai_mlp" },
-    {"name" : "sc", "modelzoo_sub_path" : "spectral-clustering", "f_name" : "nonai_sc" },
-    {"name" : "res18", "modelzoo_sub_path" : "ssd_resnet18", "v8binary_sub_path" : "ssd-resnet18", "f_name" : "ssd_res18" },
-    {"name" : "res34", "modelzoo_sub_path" : "ssd_resnet34", "v8binary_sub_path" : "ssd-resnet34", "f_name" : "ssd_res34" },
-    {"name" : "resnet50", "modelzoo_sub_path" : "resnet50", "f_name" : "resnet50" },
-    {"name" : "resnet50_batch2_dc", "modelzoo_sub_path" : "resnet50_batch2_dc", "v8binary_sub_path" : "resnet50_batch2", "f_name" : "resnet50bc2" },
-)
+dWorkloads = {
+    "is64" :  {"name" : "ising64", "modelzoo_sub_path" : "ising/64x64", "f_name" : "nonai_ising64" },
+    "is128" : {"name" : "ising128", "modelzoo_sub_path" : "ising/128x128", "f_name" : "nonai_ising128" },
+    "ln" : {"name" : "linear-solver", "modelzoo_sub_path" : "linear-solver", "f_name" : "nonai_ln" },
+    "mlp" : {"name" : "monte-carlo", "modelzoo_sub_path" : "monte-carlo", "f_name" : "nonai_mlp" },
+    "sc" : {"name" : "spectral-clustering", "modelzoo_sub_path" : "spectral-clustering", "f_name" : "nonai_sc" },
+    "ssd18" : {"name" : "ssd_resnet18", "modelzoo_sub_path" : "ssd_resnet18", "v8binary_sub_path" : "ssd-resnet18", "f_name" : "ssd_res18" },
+    "ssd34" : {"name" : "ssd_resnet34", "modelzoo_sub_path" : "ssd_resnet34", "v8binary_sub_path" : "ssd-resnet34", "f_name" : "ssd_res34" },
+    "res50" : {"name" : "resnet50", "modelzoo_sub_path" : "resnet50", "f_name" : "resnet50" },
+    "res50bc2" : {"name" : "resnet50_batch2", "modelzoo_sub_path" : "resnet50_batch2_dc", "v8binary_sub_path" : "resnet50_batch2", "f_name" : "resnet50bc2" },
+}
 
 cpy_file_ext = ("elf", "disasm", "bin")
 
@@ -52,6 +52,33 @@ def __callBash(cmd, disp : bool = False):
     if disp == True: print(rec)
     return -1
 
+def CheckWorkload(wl):
+    print(_COLOR_BLUE_+wl["name"]+":"+_COLOR_DEFAULT_)
+    if "v8binary_sub_path" in wl:
+        v8b_path = dst_path + wl["v8binary_sub_path"]
+    else:
+        v8b_path = dst_path + wl["modelzoo_sub_path"]
+    sign_cmd = sign_script + " " + v8b_path + "/" + wl["f_name"] + "_sign.bin"
+    if 0 != __callBash(sign_cmd):
+        sys.exit(1)
+
+def SignWorkload(wl, src_path, dst_path):
+    print(_COLOR_BLUE_+wl["name"]+":"+_COLOR_DEFAULT_)
+    if "v8binary_sub_path" in wl:
+        v8b_path = dst_path + wl["v8binary_sub_path"]
+    else:
+        v8b_path = dst_path + wl["modelzoo_sub_path"]
+    for ext in cpy_file_ext:
+        cp_cmd = "cp " + src_path + wl["modelzoo_sub_path"] + "/" + wl["f_name"] + "." + ext + " " + v8b_path + "/"
+        if 0 != __callBash(cp_cmd):
+            sys.exit(1)
+    sign_cmd = sign_script + " " + v8b_path + "/" + wl["f_name"] + ".bin " + " --branch " + branch_name + " --tag " + tag_name + " --repo " + repo_name + "  "
+    if 0 != __callBash(sign_cmd):
+        sys.exit(1)
+    rm_cmd = "rm " + v8b_path + "/" + wl["f_name"] + ".bin" 
+    if 0 != __callBash(rm_cmd):
+        sys.exit(1)
+
 def getPath(kPath):
     #print(_COLOR_BLUE_+"The commits of the repos:"+_COLOR_DEFAULT_)
     for kp in kPath:
@@ -67,6 +94,7 @@ def getPath(kPath):
 
 if __name__ == "__main__":
     tag_name = __findArgValue("tag")
+    kWorkloads = [*dWorkloads]
     if tag_name != None:
         #cpy and signature
         getPath([*dPath])
@@ -79,33 +107,18 @@ if __name__ == "__main__":
 
         src_path = dPath["MODELZOO"]+"build_pld/"
         dst_path = dPath["V8BINARY"]
-        for wl in workloads:
-            print(_COLOR_BLUE_+wl["name"]+":"+_COLOR_DEFAULT_)
-            if "v8binary_sub_path" in wl:
-                v8b_path = dst_path + wl["v8binary_sub_path"]
-            else:
-                v8b_path = dst_path + wl["modelzoo_sub_path"]
-            for ext in cpy_file_ext:
-                cp_cmd = "cp " + src_path + wl["modelzoo_sub_path"] + "/" + wl["f_name"] + "." + ext + " " + v8b_path + "/"
-                if 0 != __callBash(cp_cmd):
-                    sys.exit(1)
-            sign_cmd = sign_script + " " + v8b_path + "/" + wl["f_name"] + ".bin " + " --branch " + branch_name + " --tag " + tag_name + " --repo " + repo_name + "  "
-            if 0 != __callBash(sign_cmd):
-                sys.exit(1)
-            rm_cmd = "rm " + v8b_path + "/" + wl["f_name"] + ".bin" 
-            if 0 != __callBash(rm_cmd):
-                sys.exit(1)
+        if len(sys.argv) > 1 and sys.argv[1] in kWorkloads:
+            SignWorkload(dWorkloads[sys.argv[1]], src_path, dst_path)
+        else:
+            for wl in kWorkloads:
+                SignWorkload(dWorkloads[wl], src_path, dst_path)
     else:
         # check signature
         getPath(["V8BINARY"])
         dst_path = dPath["V8BINARY"]
-        for wl in workloads:
-            print(_COLOR_BLUE_+wl["name"]+":"+_COLOR_DEFAULT_)
-            if "v8binary_sub_path" in wl:
-                v8b_path = dst_path + wl["v8binary_sub_path"]
-            else:
-                v8b_path = dst_path + wl["modelzoo_sub_path"]
-            sign_cmd = sign_script + " " + v8b_path + "/" + wl["f_name"] + "_sign.bin"
-            if 0 != __callBash(sign_cmd):
-                sys.exit(1)
+        if len(sys.argv) > 1 and sys.argv[1] in kWorkloads:
+            CheckWorkload(dWorkloads[sys.argv[1]])
+        else:
+            for wl in kWorkloads:
+                CheckWorkload(dWorkloads[wl])
     
