@@ -1,5 +1,9 @@
 # py_dev  
 
+```bash
+export PYTHONPATH=${pwd}$PYTHONPATH
+```
+
 ---
 ## py_bin_scaler  
 - binary file data scaler.  

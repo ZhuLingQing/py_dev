@@ -1,6 +1,22 @@
 import sys,os
-from py_utilities.file_rw import writeBinFile
-from py_utilities.file_rw import readBinFile
+
+def writeBinFile(file_path, bary):
+    try:
+        binfile = open(file_path,'wb')
+        binfile.write(bary)
+        binfile.close()
+    except:
+        assert False, "file not exist"
+
+def readBinFile(file_path):
+    try:
+        binfile = open(file_path,'rb')
+        size = os.path.getsize(file_path)
+        data = binfile.read(size)
+        binfile.close()
+        return data
+    except:
+        assert False, "file not exist"
 
 def __res50midProc(file_path):
     l_gap = 32
@@ -9,9 +25,9 @@ def __res50midProc(file_path):
     baout = bytes()
     offset = 0
     for size in l_size:
-        baout += bytes([0]*l_gap)
+        baout += b'\0'*l_gap #bytes([0]*l_gap)
         baout += bary[offset + l_gap : offset + size - 32]
-        baout += bytes([0]*l_gap)
+        baout += b'\0'*l_gap #bytes([0]*l_gap)
         offset += size
     writeBinFile(file_path, baout)
 

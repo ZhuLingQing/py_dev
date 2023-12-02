@@ -9,8 +9,8 @@ _FAIL_ = _COLOR_RED_+"FAIL"+_COLOR_DEFAULT_
 _PASS_ = _COLOR_GREEN_+"PASS"+_COLOR_DEFAULT_
 
 dPath = {
-    "V8BINARY" : "/nfs/homes/tzhu/projects/pace2/v8binary/",
-    "MODELZOO" : "/nfs/homes/tzhu/projects/pace2/model_zoo.ssd18/"
+    "V8BINARY" : "xxx",#"/nfs/homes/tzhu/projects/pace2/v8binary/",
+    "MODELZOO" : "xxx",#"/nfs/homes/tzhu/projects/pace2/model_zoo.50/"
 }
 
 # from, to
@@ -73,6 +73,7 @@ def SignWorkload(wl, src_path, dst_path):
         if 0 != __callBash(cp_cmd):
             sys.exit(1)
     sign_cmd = sign_script + " " + v8b_path + "/" + wl["f_name"] + ".bin " + " --branch " + branch_name + " --tag " + tag_name + " --repo " + repo_name + "  "
+    print(sign_cmd)
     if 0 != __callBash(sign_cmd):
         sys.exit(1)
     rm_cmd = "rm " + v8b_path + "/" + wl["f_name"] + ".bin" 
@@ -91,6 +92,8 @@ def getPath(kPath):
             print(str.format("%-10s"%kp)+" : " + dPath[kp]+_COLOR_RED_+" Not exist "+_COLOR_DEFAULT_)
             sys.exit(1)
         #print("%-10s : %s" % (kp, _COLOR_YELLOW_+getGitCommit(dPath[kp])+_COLOR_DEFAULT_))
+        if dPath[kp][-1] != "/":
+            dPath[kp] += "/"
 
 if __name__ == "__main__":
     tag_name = __findArgValue("tag")
