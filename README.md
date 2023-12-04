@@ -5,15 +5,6 @@ export PYTHONPATH=${pwd}$PYTHONPATH
 ```
 
 ---
-## py_bin_scaler  
-- binary file data scaler.  
-- cut off or insert zero from bitN to bitM.  
-- which is used in model_zoo ising output resize.  
-```bash
->python py_bin.py $bin_file_path_name $scale_from:$scale_to
-```
-
----
 ## py_refresh
 - curses library used in python.  
 - no specific usage.  
@@ -42,24 +33,27 @@ export PYTHONPATH=${pwd}$PYTHONPATH
 ```
 
 ---
-## exe_wl.py
-- use subprocess to execute bash and other script.  
-- which could fetch process the output and return code.  
-- support git commit fetch.  
-- support os.chdir() path move.  
-- this script is dedicated for gordian end to end verify.   
+## py_lgt_e2e
+
+---
+## py_utilities
+
+### bin_compare.py
+- compare two binary files.
+- export:
+    - bin_compare()  
 ```bash
->python exe_wl.py
->python exe_wl.py $workload_name
+>python bin_compare.py $bin_file1 $bin_file2 $break_on_diff $disp_per_line
 ```
 
----
-## hex2bin.py
-- convert model_zoo hex to binary.  
-- support path and recursive.  
+## bin_scaler  
+- binary file data scaler.  
+- cut off or insert zero from bitN to bitM.  
+- which is used in model_zoo ising output resize.  
+```bash
+>python bin_scaler.py $bin_file_path_name $scale_from:$scale_to
+```
 
----
-## py_utilities.py
 ### exe_bash.py
 - execute bash command.  
 - export:
@@ -81,3 +75,6 @@ export PYTHONPATH=${pwd}$PYTHONPATH
         - getBranch()
         - getRepoUrl()
         - getRepoName()
+```bash
+>python py_git.py $repo_path
+```
