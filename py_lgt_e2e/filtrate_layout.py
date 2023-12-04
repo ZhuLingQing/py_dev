@@ -1,6 +1,6 @@
 from py_utilities.file_rw import readTxtLines
 from py_utilities.file_rw import readBinFile
-from py_check.crc16 import crc16
+from py_check.crc import crc16
 import sys, os
 
 kTotalLayers = 108
